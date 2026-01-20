@@ -1,0 +1,25 @@
+<p>game-logic works!</p>
+<input #guessInput id="guessInput" (keydown)="onGuessEntryInputKeyDown($event)"
+       autocomplete="off"
+       type = 'text'
+       width = '100px'
+       tabIndex = {0}
+       autoFocus
+/>
+<!--
+       onInput={this.onInput.bind(this)}
+       onKeyDown = {this.onRealKeyDown.bind(this)}
+       onBlur = {this.onBlur.bind(this)}
+-->
+<div>
+    @for (ch of inputChars; track $index; let idx = $index) {
+    <span class="boxed-char" [innerHTML]="ch"></span>
+    }
+</div>
+
+<div>
+    <br/>
+    <br/>
+    
+    Message: {{state.message}}
+</div>

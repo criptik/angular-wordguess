@@ -1,0 +1,21 @@
+/* we used to put this up at the top but now is at the bottom (where input focus is)
+// position: 'absolute',
+// top: '0px',
+// left: '30px',
+*/
+#guessInput {
+    opacity:0.05;
+    margin-Left: '5px';
+    font-size: '1px';
+}
+.boxed-char {
+    display: inline-block;
+    font-size: 30px;
+    border: 3px solid black;
+    padding: 5px;
+    display: inline-block;
+    margin: 0.1em;
+    text-align: center;
+    height: 35px;
+    width: 30px;
+}
