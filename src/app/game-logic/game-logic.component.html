@@ -1,4 +1,3 @@
-<p>game-logic works!</p>
 <input #guessInput id="guessInput" (keydown)="onGuessEntryInputKeyDown($event)"
        autocomplete="off"
        type = 'text'
@@ -11,8 +10,26 @@
        onKeyDown = {this.onRealKeyDown.bind(this)}
        onBlur = {this.onBlur.bind(this)}
 -->
+<!--  the previous guesses -->
 <div>
-    @for (ch of inputChars; track $index; let idx = $index) {
+    @for (guessLine of guessLines; track $index; let idx = $index) {
+    <br/>
+    <span>{{idx}}: {{guessList[idx].guess}} {{guessList[idx].posMap}}</span>
+    <div>
+        @for (char of guessLine.chars; track $index;) {
+        <span>{{char.chval}} {{char.bgcolor}}, </span>
+        }
+        totals:
+        @for (total of guessLine.totals; track $index;) {
+        <span>{{total.numval}} {{total.bgcolor}}, </span>
+        }
+    </div>
+    }
+
+</div>
+
+<div>
+    @for (ch of inputChars; track $index;) {
     <span class="boxed-char" [innerHTML]="ch"></span>
     }
 </div>
@@ -21,5 +38,9 @@
     <br/>
     <br/>
     
-    Message: {{state.message}}
+    <div [ngStyle]="{'background-color' : message.bgcolor}" >
+        {{message.html}}
+        <br/>
+        {{message.defs}}
+    </div>
 </div>
