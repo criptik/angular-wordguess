@@ -1,3 +1,67 @@
+<div>
+    <span class="game-title">WordGuess Game</span>
+    <button class="game-button"  (click)="onSettingsButtonClick($event)">Settings</button>
+    <button class="game-button" (click)="onNewGameButtonClick($event)">New Game</button>
+</div>
+
+@if (!gameOver) {
+<div class="msg-line">
+    <br/>
+    {{possibleMsg[0]}}
+    <br/>
+    {{possibleMsg[1]}}
+</div>
+}
+
+<!--  the previous guesses -->
+<div>
+    @for (guessLine of guessLines; track $index; let idx = $index) {
+    <br/>
+    <!--<span>{{idx}}: {{guessList[idx].guess}} {{guessList[idx].posMap}}</span>-->
+    <div>
+        @for (chobj of guessLine.chars; track $index;) {
+        <span class="boxed-char" [innerHTML]="chobj.chval" [ngStyle]="{'background-color':chobj.bgcolor}"></span>
+        }
+        <span class="sep-span">{{nbspchar}}{{nbspchar}}{{nbspchar}}{{nbspchar}} </span>
+        @for (totalobj of guessLine.totals; track $index;) {
+        <span class="circled-char" [innerHTML]="totalobj.numval" [ngStyle]="{'background-color':totalobj.bgcolor}"></span>
+        }
+    </div>
+    }
+
+</div>
+
+@if (!gameOver) {
+<br/>
+<div>
+    @for (ch of inputChars; track $index;) {
+    <span class="boxed-char" [innerHTML]="ch"></span>
+    }
+    <br/>
+    <br/>
+    <span class="msg-line">{{poolLine}}</span>
+</div>
+}
+
+<div>
+    <br/>
+    <br/>
+    
+    <div class="msg-line" [ngStyle]="{'background-color' : message.bgcolor}" >
+        {{message.html}}
+        <br/>
+        @for (def of message.defs; track $index;) {
+        <div>{{def}}</div>
+        }
+    </div>
+</div>
+
+<div>
+    @if (enableSettings) {
+    <app-game-settings/>
+    }
+</div>
+
 <input #guessInput id="guessInput" (keydown)="onGuessEntryInputKeyDown($event)"
        autocomplete="off"
        type = 'text'
@@ -10,37 +74,4 @@
        onKeyDown = {this.onRealKeyDown.bind(this)}
        onBlur = {this.onBlur.bind(this)}
 -->
-<!--  the previous guesses -->
-<div>
-    @for (guessLine of guessLines; track $index; let idx = $index) {
-    <br/>
-    <span>{{idx}}: {{guessList[idx].guess}} {{guessList[idx].posMap}}</span>
-    <div>
-        @for (char of guessLine.chars; track $index;) {
-        <span>{{char.chval}} {{char.bgcolor}}, </span>
-        }
-        totals:
-        @for (total of guessLine.totals; track $index;) {
-        <span>{{total.numval}} {{total.bgcolor}}, </span>
-        }
-    </div>
-    }
 
-</div>
-
-<div>
-    @for (ch of inputChars; track $index;) {
-    <span class="boxed-char" [innerHTML]="ch"></span>
-    }
-</div>
-
-<div>
-    <br/>
-    <br/>
-    
-    <div [ngStyle]="{'background-color' : message.bgcolor}" >
-        {{message.html}}
-        <br/>
-        {{message.defs}}
-    </div>
-</div>

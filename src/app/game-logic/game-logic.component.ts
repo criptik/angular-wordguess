@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common'; // or just NgStyle
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
@@ -6,6 +6,8 @@ import { Observable } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
 import * as _ from 'lodash';
 import { HintHandler } from './HintHandler'
+import { GameSettingsComponent } from '../game-settings/game-settings.component';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -38,10 +40,8 @@ export type SettingsObj = {
     wordlen: number,
     guessMustBeWord: boolean,
     noMarkGuessChars: boolean,            
-    hintUsePolicy: number,
-    useVirtKeyboard: boolean,
-    allowPlurals: boolean,
     startWithReveal: boolean,
+    hintUsePolicy: number,
 }
 
 export type GuessObj = {
@@ -91,44 +91,49 @@ const savedGameFields = [
 @Component({
   selector: 'app-game-logic',
   standalone: true,
-  imports: [CommonModule], 
+  imports: [CommonModule, GameSettingsComponent], 
   templateUrl: './game-logic.component.html',
   styleUrl: './game-logic.component.css'
 })
 export class GameLogicComponent  implements OnInit {
 
+    @ViewChild('guessInput') guessInputRef!: ElementRef<HTMLInputElement>;
     inputChars: string[] = [];
     input: string = '';
-    curAnswerLen: number = 0;
     answer: string = '';
     totalGuesses: number = 0;
     illegalGuessCount: number = 0;
     wordList: string[] = [];
     possibleList: string[] = [];
-    prevDataLength: number = 0;
+    possibleMsg: string[] = [];
     gameOver: boolean = false;
     message: MessageObj = emptyMessage;
     hintHandler: HintHandler;
+    // default settings values
     settings: SettingsObj = {
         wordlen: 5,
         guessMustBeWord : false,
-        noMarkGuessChars : true,            
-        hintUsePolicy : EXACTBIT,
-        useVirtKeyboard: false,
-        allowPlurals: true,
+        noMarkGuessChars : false,            
         startWithReveal: false,
+        hintUsePolicy : EXACTBIT,
     };
+    curWordListWordLen: number = 0;
+    wordlenBeforeSettingsDialog: number = 0;
     guessList: GuessObj[] = [];
     guessLines: GuessLineObj[] = [];
     yellowString: string = ' ';
     greenString: string = ' ';
     greyString: string = ' ';
     notInPool: Map<string, number> = new Map();
-    
-    state: UnknownKeyObj = {};
+    poolLine: string = '';
+    nbspchar: string = nbsp;
+    enableSettings: boolean = false;
+    settingsComponent: GameSettingsComponent;
+    defStrings: string[] = [];
     
     constructor(private _fileService: FileService) {
         this.hintHandler = HintHandler.getHintHandler(this);
+        this.settingsComponent = new GameSettingsComponent(this);
         this.setInputs('');
     }
 
@@ -137,54 +142,75 @@ export class GameLogicComponent  implements OnInit {
         await this.startNewGame();
         this.setInputs('');
         this.hintHandler = HintHandler.getHintHandler(this);  // in case it got changed on settings change
+        this.focusToInput();
     }
     
     async startNewGame(): Promise<void> {
         this.guessList = [];
+        this.guessLines = [];
         this.setInputs('');
+        this.setPoolLine();
+        this.message = emptyMessage;
+        this.hintHandler = HintHandler.getHintHandler(this);
         if (true) {
-            // this.hintHandler = HintHandler.getHintHandler(this);
             await this.buildWordList(this.settings.wordlen);
-            console.log('back from buildWordList');
             this.possibleList = Array.from(this.wordList);
+            this.setPossibleMsg();
             this.answer = this.wordList[Math.floor(Math.random() * this.wordList.length)].toUpperCase();
+            this.defStrings = await this.getDefinition();
         }
         else {
             this.answer = 'FRIZZ';
         }
         this.totalGuesses = 0;
-        // if (this.settings.startWithReveal) {
-        //     const inputAry = Array(this.settings.wordlen).fill(WILDCHAR);
-        //     const revealPos = this.findRevealPos();
-        //     inputAry[revealPos] = this.answer[revealPos];
-        //     this.setInputs(inputAry.join(''));
-        //     const posMap = this.doCompare(this.input, this.answer);
-        //     this.guessList.push({
-        //         guess: this.input,
-        //         index : this.guessList.length,
-        //         posMap,
-        //     });
-        //     this.possibleList = this.getNewPossibleList(this.input, posMap);
-        //     this.setInputs('');
-        //     this.totalGuesses = 1;
-        // }
-        // console.log('this.answer =', this.answer);
+        if (this.settings.startWithReveal) {
+            const inputAry: string[] = Array(this.settings.wordlen).fill(WILDCHAR);
+            const revealPos: number  = this.findRevealPos();
+            inputAry[revealPos] = this.answer[revealPos];
+            this.setInputs(inputAry.join(''));
+            console.log('input after reveal', this.input);
+            const posMap = this.doCompare(this.input, this.answer);
+            this.guessList.push({
+                guess: this.input,
+                index : this.guessList.length,
+                posMap,
+            });
+            this.doGuessFormatting();
+            this.possibleList = this.getNewPossibleList(this.input, posMap);
+            this.setPossibleMsg();
+            this.setInputs('');
+            this.totalGuesses = 1;
+        }
         this.gameOver = false;
-        this.setState({
-            input: this.input,
-            guessList: this.guessList,
-            gameOver: false,
-            totalGuesses: this.totalGuesses,
-            message: null,
-        });
-        this.prevDataLength = 0;
+        this.focusToInput();
+        console.log('end of startNewGame, component', this);
     }
 
+    findRevealPos(): number {
+        let maxLength: number = 0;
+        let revealPos: number = 0;
+        [...this.answer].forEach( (ch, index) => {
+            // skip if in mark chars mode and char is already green
+            const shouldSkip: boolean = (!this.settings.noMarkGuessChars &&
+                                this.guessList.length > 0 &&
+                                this.guessList[this.guessList.length - 1].posMap[index] === EXACT);
+            if (!shouldSkip) {
+                // find which character yields the longest possibleList
+                const newList: string[] = this.possibleList.filter( (word) => word[index] === ch);
+                // console.log(`knowing ${ch} at pos ${index} reduces possibleList from ${this.possibleList.length} to ${newList.length}`);
+                if (newList.length > maxLength) {
+                    maxLength = newList.length;
+                    revealPos = index;
+                }
+            }
+        });
+        return revealPos;
+    }
 
-    async buildWordList(wordlen: number, allowPlurals=this.settings.allowPlurals): Promise<void> {
-        if (wordlen === this.curAnswerLen) return;
-        this.curAnswerLen = wordlen;
-        const URL = `/assets/ospd${allowPlurals ? '' : 'np'}${wordlen}.txt`;
+    async buildWordList(wordlen: number): Promise<void> {
+        if (wordlen === this.curWordListWordLen) return;
+        this.curWordListWordLen = wordlen;
+        const URL = `/assets/ospd${wordlen}.txt`;
         console.log('URL', URL);
         let text: string = '';
         console.log('before call to getTextFile');
@@ -242,30 +268,31 @@ export class GameLogicComponent  implements OnInit {
 
     setInputs(str: string) {
         this.input = str;
-        _.range(this.curAnswerLen).forEach( (n) => {
-            this.inputChars[n] = (n < this.input.length ? this.input[n] : nbsp)
-        });
+        if (this.gameOver) {
+            this.inputChars = [];
+        } else { 
+            // build up array first, the assign
+            const tmpary: string[] = [];
+            _.range(this.settings.wordlen).forEach( (n) => {
+                tmpary.push((n < this.input.length ? this.input[n] : nbsp));
+            });
+            this.inputChars = tmpary;
+        }
     }
 
-    setState(newFields: UnknownKeyObj) {
-        Object.entries(newFields).forEach( ([fieldName, val]) => {
-            console.log('setState', fieldName, val);
-            this.state[fieldName] = val;
-        });
-    }
-    
     onGuessEntryInputKeyDown(x: any) {
         let key: string = x.key;
-        if (this.state.gameOver) return;
+        if (this.gameOver) return;
         if (key === '?') console.log(`this.answer = ${this.answer}, len=${this.answer.length}`);
-        if (key === 'Backspace' && this.state.message != null) {
-            this.setState({message: null});
+        if (key === '!') console.log('logic component', this);
+        if (key === 'Backspace' && this.message != null) {
+            this.message = emptyMessage;
         }
         if (['Enter', '{enter}'].includes(key)) {
             if (this.input.length === this.answer.length) {
                 this.doInputSubmit();
             } else {
-                this.setState({message: `guess ${this.input} is too short, ignoring Enter`});
+                this.setMessage(`guess ${this.input} is too short, ignoring Enter`);
             }
         }
         else if (key === 'Backspace' && this.input.length > 0) {
@@ -274,20 +301,24 @@ export class GameLogicComponent  implements OnInit {
         else {
             key = key.toUpperCase();
             if ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.includes(key)) {
-                if (this.input.length < this.curAnswerLen) {
+                if (this.input.length < this.settings.wordlen) {
                     this.setInputs(this.input + key);
                 }
                 else {
-                    this.setState({message: `too long, ignoring ${key}`});
+                    this.setMessage(`too long, ignoring ${key}`);
                 }
             }
         }
     }
 
+    setPossibleMsg() {
+        const listlen = this.possibleList.length;
+        this.possibleMsg = [];
+        this.possibleMsg.push(`Guesses: ${this.totalGuesses}, Legal: ${this.totalGuesses - this.illegalGuessCount}`);
+        this.possibleMsg.push(`${listlen} ${(listlen === 1 ? 'word meets' : 'words meet')} the criteria`);
+    }
+    
     async doInputSubmit() {
-        const msg = `in submit, input=${this.input}`;
-        this.setState({message: msg});
-        console.log(msg);
         let legalGuess = true;  // assume this
         if (this.input.length !== this.answer.length) return;
         this.totalGuesses++;
@@ -295,8 +326,7 @@ export class GameLogicComponent  implements OnInit {
         
         if (this.settings.guessMustBeWord && !this.wordList.includes(this.input)) {
             // await this.tempAlert('Guess must be a Legal Scrabble Word', 1500);
-            const addon = (this.input.endsWith('S') && !this.settings.allowPlurals ? ', plurals are disabled' : '');
-            this.setMessage(`Guess must be in wordlist${addon}`);
+            this.setMessage(`Guess must be in wordlist`);
             legalGuess = false;
         }
         // else if (this.settings.hintUsePolicy !== 0 && this.guessList.length > 0) {
@@ -316,25 +346,17 @@ export class GameLogicComponent  implements OnInit {
                 index : this.guessList.length,
                 posMap,
             });
-            if (false) {
-                this.possibleList = this.getNewPossibleList(this.input, posMap);
-            }
+            this.possibleList = this.getNewPossibleList(this.input, posMap);
+            this.setPossibleMsg();
             // console.log(this.possibleList);
+            this.notInPool = new Map<string, number>();
             
             if (posMap.every(val => val === EXACT)) {
                 this.gameOver = true;
                 this.message = await this.buildGameOverMessage();
-                this.setState(
-                    {gameOver:true,
-                     message: this.message,
-                });
             }
             else {
                 this.message = emptyMessage;
-                this.setState(
-                    {gameOver:false,
-                     message: this.message,
-                });
             }
         }
         // clean up input for the next time thru
@@ -343,23 +365,9 @@ export class GameLogicComponent  implements OnInit {
         }
         else {
             this.illegalGuessCount++;
-            this.setState({
-                totalGuesses: this.totalGuesses,
-            });
         }
-        this.setState({
-            input: this.input,
-            guessList: this.guessList,
-        });
-
-        // do the guess formatting
-        this.guessLines = [];
-        this.guessList.forEach( (guess) => {
-            this.guessLines.push(this.formatGuess(guess, true));
-        });
-        this.setState({
-            guessLines: this.guessLines,
-        });
+        this.doGuessFormatting();
+        
         if (false) {
             // handle the fact that embedded objects need their fields in the list
             // the last fields are from guessList objects (shown explicitly in case the list is empty)
@@ -371,6 +379,15 @@ export class GameLogicComponent  implements OnInit {
         }
     }
 
+    doGuessFormatting() {
+        // do the guess formatting
+        this.guessLines = [];
+        this.guessList.forEach( (guess) => {
+            this.guessLines.push(this.formatGuess(guess, true));
+        });
+        this.setPoolLine();
+    }
+    
     formatGuess(guessObj: GuessObj, submitted: boolean = false): GuessLineObj {
         let guessLine: GuessLineObj = {chars: [], totals: []};
         const guess = guessObj.guess;
@@ -389,32 +406,94 @@ export class GameLogicComponent  implements OnInit {
     }
     
     async buildGameOverMessage(): Promise<MessageObj> {
-        // const numGuesses = this.state.guessList.length;
         var html = `Match!!`;
-        const defs = await this.getDefinition();
         return {html: html,
-                defs: defs,
+                defs: this.defStrings,
                 bgcolor: 'white',
                };
     }
 
-    async getDefinition(): Promise<string[]> {
-        var defs = [];
-        defs.push('Fake Definition 1');
-        defs.push('Fake Definition 2');
-        return defs;
-    }
-        
-    getNewPossibleList(inputStr: string, posMap: number[] ): string[] {
-        return [];
+    getNewPossibleList(inputStr: string, basePosMap: number[] ): string[] {
+        return this.possibleList.filter(word => {
+            const tstPosMap = this.doCompare(inputStr, word);
+            const ok = this.hintHandler.possibleListFilter(tstPosMap, basePosMap);
+            // if (ok) console.log(word, tstPosMap, basePosMap);
+            return ok;
+        });
     }
 
     setMessage(html: string, bgcolor:string='pink') {
         const msgObj: MessageObj = {html, bgcolor, defs:[]};
         this.message = msgObj;
-        this.setState({
-            message: msgObj,
-        });
     }
+
+    getPoolChars() {
+        return [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter((c) => this.notInPool.get(c) !== 1);
+    }
+
+    setPoolLine() {
+        this.poolLine = '';
+        if (!this.gameOver) {
+            this.poolLine = `Pool: ${this.getPoolChars().join(' ')}`;
+        }
+    }
+
+    async getDefinition(): Promise<string[]> {
+        const word = this.answer;
+        // make a req to the api
+        const result = await fetch(
+            `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
+        );
+        let defs: string[]  = [];
+        if (!result.ok) {
+            // alert("No definition found");
+            defs.push('No definition found');
+            return defs;
+        }
+        const data = await result.json();
+        // console.log(data);
+        data.forEach((d: any, dindex: number) => {
+            d.meanings.forEach((m: any, mindex: number) => {
+                const pspeech = m.partOfSpeech;
+                m.definitions.forEach((def: any, defindex: number) => {
+                    if (defindex == 0) defs.push(`(${pspeech}): ${def.definition}`)
+                });
+            });
+        });
+        return defs;
+    }
+
+    onSettingsButtonClick(event: any) {
+        this.wordlenBeforeSettingsDialog = this.settings.wordlen;
+        this.enableSettings = true;
+        this.focusToInput();
+    }
+
+    async onNewGameButtonClick(event: any) {
+        await this.startNewGame();
+        this.focusToInput();
+    }
+    
+    async settingsDialogComplete(formValue: any) {
+        this.enableSettings = false;
+        this.settings.wordlen = formValue.wordlen;
+        this.settings.guessMustBeWord = formValue.guessMustBeWord;
+        this.settings.noMarkGuessChars = formValue.noMarkGuessChars;
+        this.settings.startWithReveal = formValue.startWithReveal;
+        this.settings.hintUsePolicy = formValue.hintUsePolicy;
+        // see if we have to start a new game
+        if (this.settings.wordlen !== this.wordlenBeforeSettingsDialog) {
+            await this.startNewGame();
+            this.setMessage('starting new game because wordlen changed');
+        }
+        this.focusToInput();
+
+    }
+
+    focusToInput() {
+        const inputElement: HTMLInputElement = this.guessInputRef.nativeElement;
+        inputElement.focus();
+    }
+
 }
 

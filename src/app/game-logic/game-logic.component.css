@@ -4,18 +4,55 @@
 // left: '30px',
 */
 #guessInput {
-    opacity:0.05;
+    opacity:0.2;
     margin-Left: '5px';
     font-size: '1px';
 }
 .boxed-char {
     display: inline-block;
-    font-size: 30px;
+    font-size: 25px;
     border: 3px solid black;
     padding: 5px;
     display: inline-block;
     margin: 0.1em;
     text-align: center;
-    height: 35px;
-    width: 30px;
+    height: 30px;
+    width: 25px;
 }
+.circled-char {
+    display: inline-block;
+    font-size: 25px;
+    border-radius: 50%;
+    border: 1px solid black;
+    padding: 5px;
+    margin: 0.2em;
+    text-align: center;
+    height: 25px;
+    width: 25px;
+}
+.sep-span { 
+    display: inline-block;
+    font-size: 25px;
+}   
+.msg-line {
+    display: inline-block;
+    font-size: 20px;
+}
+.px20{
+    font-size: 20px;
+}
+.px30{
+    font-size: 30px;
+}
+.px40{
+    font-size: 40px;
+}
+.game-title {
+    font-size: 40px;
+    margin-right: 1em;
+}
+.game-button {
+    font-size: 25gpx;
+    margin-right: 1em;
+}
+

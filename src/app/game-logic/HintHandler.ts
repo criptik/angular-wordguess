@@ -58,6 +58,7 @@ abstract class HintHandler {
     
     abstract comparePosMaps(oldPosMap: number[], newPosMap: number[], newGuess: string, guessObj: GuessObj): string;
 
+    abstract possibleListFilter(tstPosMap: number[], basePosMap: number[]): boolean;
 }
 
 // class for handling hints by marking chars
@@ -133,7 +134,7 @@ class HintHandlerMarkChars extends HintHandler{
         return errMsg;
     }
 
-    possibleListFilter(tstPosMap: number[], basePosMap: number[]) {
+    possibleListFilter(tstPosMap: number[], basePosMap: number[]): boolean {
         return tstPosMap.every((val, index) => val === basePosMap[index] || this.hasUnknowns(val, basePosMap[index]));
     }
 }
@@ -217,7 +218,7 @@ class HintHandlerShowTotals extends HintHandler{
         return errMsg;
     }
 
-    possibleListFilter(tstPosMap: number[], basePosMap: number[]) {
+    possibleListFilter(tstPosMap: number[], basePosMap: number[]): boolean {
         const [tstE, tstW, baseE, baseW] = this.countKnownVals(tstPosMap, basePosMap);
         return (tstE === baseE && tstW === baseW);
     }
