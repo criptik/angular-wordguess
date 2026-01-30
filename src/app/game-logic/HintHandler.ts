@@ -67,16 +67,13 @@ class HintHandlerMarkChars extends HintHandler{
         let bgcolor = 'white'; // default
         if (guessObj.posMap[pos] === EXACT) {
             bgcolor = 'lightgreen';
-            this.gameObj.greenString += ` ${chval}`;
         }
         else if (guessObj.posMap[pos] === WRONG) {
             bgcolor = 'yellow';
-            this.gameObj.yellowString += ` ${chval}`;
         }
         else if (submitted) {
             const markedCount = this.getMarkedCount(guessObj.guess, guessObj.posMap, chval);
             if (markedCount === 0) {
-                this.gameObj.greyString += ` ${chval}`;
                 this.gameObj.notInPool.set(chval, 1);
             }
         }
@@ -145,7 +142,7 @@ class HintHandlerShowTotals extends HintHandler{
     // which is the special case when no green or yellow
     computeGuessCharColor(guessObj: GuessObj, pos: number, chval: string, submitted: boolean): string {
         const bgcolor = 'white';
-        if (submitted && (guessObj.posMap.every(val => val === NOTUSE))) {
+        if (submitted && (guessObj.posMap.every((val:number, index:number) => ((val === NOTUSE) || (index === this.gameObj.revealPos))))) {
             this.gameObj.notInPool.set(chval, 1);
         }
         return bgcolor;

@@ -14,7 +14,7 @@
 }
 
 <!--  the previous guesses -->
-<div>
+<div (click)="focusToInput()">
     @for (guessLine of guessLines; track $index; let idx = $index) {
     <br/>
     <!--<span>{{idx}}: {{guessList[idx].guess}} {{guessList[idx].posMap}}</span>-->
@@ -33,7 +33,7 @@
 
 @if (!gameOver) {
 <br/>
-<div>
+<div (click)="focusToInput()">
     @for (ch of inputChars; track $index;) {
     <span class="boxed-char" [innerHTML]="ch"></span>
     }

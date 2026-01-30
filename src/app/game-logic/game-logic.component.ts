@@ -44,6 +44,14 @@ export type SettingsObj = {
     hintUsePolicy: number,
 }
 
+const defaultSettings: SettingsObj = {
+    wordlen: 5,
+    guessMustBeWord : true,
+    noMarkGuessChars : false,            
+    hintUsePolicy : EXACTBIT,
+    startWithReveal: false,
+};
+
 export type GuessObj = {
     guess: string,
     index: number,
@@ -78,14 +86,20 @@ const emptyMessage: MessageObj = {
 };
 
 type StringOrNull = string | null;
+
+type SavedGameObj = {
+
+    message: MessageObj;
+}
+
 const savedGameFields = [
     'settings',
     'answer',
     'guessList',
     'gameOver',
     'message',
-    'totalGuesses',
-    'input',
+    'totalGuessCount',
+    'legalGuessCount',
 ];
 
 @Component({
@@ -101,22 +115,15 @@ export class GameLogicComponent  implements OnInit {
     inputChars: string[] = [];
     input: string = '';
     answer: string = '';
-    totalGuesses: number = 0;
-    illegalGuessCount: number = 0;
+    totalGuessCount: number = 0;
+    legalGuessCount: number = 0;
     wordList: string[] = [];
     possibleList: string[] = [];
     possibleMsg: string[] = [];
     gameOver: boolean = false;
     message: MessageObj = emptyMessage;
     hintHandler: HintHandler;
-    // default settings values
-    settings: SettingsObj = {
-        wordlen: 5,
-        guessMustBeWord : false,
-        noMarkGuessChars : false,            
-        startWithReveal: false,
-        hintUsePolicy : EXACTBIT,
-    };
+    settings: SettingsObj = defaultSettings;
     curWordListWordLen: number = 0;
     wordlenBeforeSettingsDialog: number = 0;
     guessList: GuessObj[] = [];
@@ -130,8 +137,11 @@ export class GameLogicComponent  implements OnInit {
     enableSettings: boolean = false;
     settingsComponent: GameSettingsComponent;
     defStrings: string[] = [];
+    revealPos: number = 0;
+    usedDefaultGameState: boolean = true;
     
     constructor(private _fileService: FileService) {
+        this.setInitGameState();
         this.hintHandler = HintHandler.getHintHandler(this);
         this.settingsComponent = new GameSettingsComponent(this);
         this.setInputs('');
@@ -155,18 +165,20 @@ export class GameLogicComponent  implements OnInit {
         if (true) {
             await this.buildWordList(this.settings.wordlen);
             this.possibleList = Array.from(this.wordList);
-            this.setPossibleMsg();
+            this.setTopMsg();
             this.answer = this.wordList[Math.floor(Math.random() * this.wordList.length)].toUpperCase();
             this.defStrings = await this.getDefinition();
         }
         else {
             this.answer = 'FRIZZ';
         }
-        this.totalGuesses = 0;
-        if (this.settings.startWithReveal) {
-            const inputAry: string[] = Array(this.settings.wordlen).fill(WILDCHAR);
-            const revealPos: number  = this.findRevealPos();
-            inputAry[revealPos] = this.answer[revealPos];
+        this.totalGuessCount = 0;
+        if (!this.settings.startWithReveal) {
+            this.revealPos = -1;
+        } else {
+            const inputAry: string[] = Array(this.settings.wordlen).fill(nbsp);
+            this.revealPos = this.findRevealPos();
+            inputAry[this.revealPos] = this.answer[this.revealPos];
             this.setInputs(inputAry.join(''));
             console.log('input after reveal', this.input);
             const posMap = this.doCompare(this.input, this.answer);
@@ -177,9 +189,10 @@ export class GameLogicComponent  implements OnInit {
             });
             this.doGuessFormatting();
             this.possibleList = this.getNewPossibleList(this.input, posMap);
-            this.setPossibleMsg();
+            this.setTopMsg();
             this.setInputs('');
-            this.totalGuesses = 1;
+            this.totalGuessCount = 0;
+            this.legalGuessCount = 0;
         }
         this.gameOver = false;
         this.focusToInput();
@@ -311,17 +324,17 @@ export class GameLogicComponent  implements OnInit {
         }
     }
 
-    setPossibleMsg() {
+    setTopMsg() {
         const listlen = this.possibleList.length;
         this.possibleMsg = [];
-        this.possibleMsg.push(`Guesses: ${this.totalGuesses}, Legal: ${this.totalGuesses - this.illegalGuessCount}`);
+        this.possibleMsg.push(`Guesses: ${this.totalGuessCount}, Legal: ${this.legalGuessCount}`);
         this.possibleMsg.push(`${listlen} ${(listlen === 1 ? 'word meets' : 'words meet')} the criteria`);
     }
     
     async doInputSubmit() {
         let legalGuess = true;  // assume this
         if (this.input.length !== this.answer.length) return;
-        this.totalGuesses++;
+        this.totalGuessCount++;
         const posMap = this.doCompare(this.input, this.answer);
         
         if (this.settings.guessMustBeWord && !this.wordList.includes(this.input)) {
@@ -329,15 +342,16 @@ export class GameLogicComponent  implements OnInit {
             this.setMessage(`Guess must be in wordlist`);
             legalGuess = false;
         }
-        // else if (this.settings.hintUsePolicy !== 0 && this.guessList.length > 0) {
-        //     const messageJsx = this.hintHandler.checkUseAllHints(this.input);
-        //     if (messageJsx) {
-        //         // console.log('messageJsx', messageJsx);
-        //         this.setMessage(messageJsx, 'rgb(230,230,230)');
-        //         legalGuess = false;
-        //     }
-        // }
+        else if (this.settings.hintUsePolicy !== 0 && this.guessList.length > 0) {
+            const message = this.hintHandler.checkUseAllHints(this.input);
+            if (message) {
+                console.log('hintUseMessage', message);
+                this.setMessage(message, 'rgb(230,230,230)');
+                legalGuess = false;
+            }
+        }
         if (legalGuess) {    
+            this.legalGuessCount++;
             // guess is legal, see how right it is
             const posMap = this.doCompare(this.input, this.answer);
             console.log(`posMap: ${posMap}`);
@@ -347,7 +361,7 @@ export class GameLogicComponent  implements OnInit {
                 posMap,
             });
             this.possibleList = this.getNewPossibleList(this.input, posMap);
-            this.setPossibleMsg();
+            this.setTopMsg();
             // console.log(this.possibleList);
             this.notInPool = new Map<string, number>();
             
@@ -358,27 +372,34 @@ export class GameLogicComponent  implements OnInit {
             else {
                 this.message = emptyMessage;
             }
-        }
-        // clean up input for the next time thru
-        if (legalGuess) {
+            // clean up input for the next time thru
             this.setInputs('');
         }
-        else {
-            this.illegalGuessCount++;
-        }
         this.doGuessFormatting();
-        
-        if (false) {
-            // handle the fact that embedded objects need their fields in the list
-            // the last fields are from guessList objects (shown explicitly in case the list is empty)
-            const filteredFieldNames =  [...savedGameFields, ...Object.keys(this.settings), 'guess', 'index', 'posMap', 'html', 'def', 'bgcolor'];
-            const JSONstring = JSON.stringify(this, filteredFieldNames);
-            window.localStorage[savedGameStorageName] = JSONstring;
-            // console.log('JSONstring:', JSON.stringify(this, filteredFieldNames, 2));
-            // console.log(`message: ${this.message}`);
-        }
+
+        this.saveGameState();
     }
 
+    saveGameState() {
+        // for now, just save the settings.  Come back to this later
+        
+        // handle the fact that embedded objects need their fields in the list
+        // the last fields are from guessList objects (shown explicitly in case the list is empty)
+        let filteredFieldNames = [];
+        let JSONstring = '';
+        if (true) {
+            filteredFieldNames =  [...Object.keys(this.settings)];
+            JSONstring = JSON.stringify(this.settings, filteredFieldNames);
+        } else {
+            filteredFieldNames =  [...savedGameFields, ...Object.keys(this.settings), 'guess', 'index', 'posMap', 'html', 'def', 'bgcolor'];
+            JSONstring = JSON.stringify(this, filteredFieldNames);
+        }
+        window.localStorage[savedGameStorageName] = JSONstring;
+        console.log('JSONstring:', JSON.stringify(this, filteredFieldNames, 2));
+        // console.log(`message: ${this.message}`);
+
+    }
+    
     doGuessFormatting() {
         // do the guess formatting
         this.guessLines = [];
@@ -406,7 +427,7 @@ export class GameLogicComponent  implements OnInit {
     }
     
     async buildGameOverMessage(): Promise<MessageObj> {
-        var html = `Match!!`;
+        var html = `Match!! after ${this.totalGuessCount} Guesses,  ${this.legalGuessCount} Legal`;
         return {html: html,
                 defs: this.defStrings,
                 bgcolor: 'white',
@@ -486,6 +507,7 @@ export class GameLogicComponent  implements OnInit {
             await this.startNewGame();
             this.setMessage('starting new game because wordlen changed');
         }
+        this.saveGameState();
         this.focusToInput();
 
     }
@@ -493,6 +515,34 @@ export class GameLogicComponent  implements OnInit {
     focusToInput() {
         const inputElement: HTMLInputElement = this.guessInputRef.nativeElement;
         inputElement.focus();
+    }
+
+
+    setInitGameState() {
+        const savedGameJSON = window.localStorage.getItem(savedGameStorageName);
+        // console.log('savedGameJSON:', savedGameJSON);
+        if (savedGameJSON) {
+            this.restoreSavedState(savedGameJSON);
+        } else {
+            this.setDefaultGameState();
+        }
+    }
+
+    restoreSavedState(jsonStr: string) {
+        const savedSettings:SettingsObj = JSON.parse(jsonStr);
+        console.log('restore', savedSettings);
+        this.settings = savedSettings;
+        console.log('restored settings are: ', this.settings);
+    }
+    
+    
+    setDefaultGameState() {
+        console.log('setting default game state');
+        // default settings
+        this.settings = defaultSettings;
+        this.answer = '';
+        this.usedDefaultGameState = true;
+        this.message = emptyMessage;
     }
 
 }
