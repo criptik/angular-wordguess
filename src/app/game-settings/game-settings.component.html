@@ -1,0 +1,63 @@
+<dialog class="px25 dialog-class" #gameSettingsDialog>
+    <h3 class="form-title"> Game Settings </h3>
+    <form [formGroup]="gameSettingsForm" (ngSubmit)="onGameSettingsFormSubmit()">
+        <span class="settings-label px25">Word Length</span>
+        @for (lenOpt of wordlenOpts; track lenOpt) {
+        <input type="radio"
+               id='len{{lenOpt}}'
+               formControlName="wordlen"
+               name="wordlen"
+               [value]=lenOpt
+        >
+        <label for='len{{lenOpt}}'>{{lenOpt}}</label>{{nbspchar}}{{nbspchar}}
+        }
+
+        <br/>
+        <br/>
+        <span class="settings-label px25">Guess must be word? (harder)</span>
+        <input class="checkbox-input" type="checkbox"
+               id='guessMustBeWord'
+               formControlName="guessMustBeWord"
+               name="guessMustBeWord"
+               [value]=gameSettingsObj.guessMustBeWord
+        >
+        <br/>
+        <br/>
+        <input class="checkbox-input" type="checkbox"
+               id='noMarkGuessChars'
+               formControlName="noMarkGuessChars"
+               name="noMarkGuessChars"
+               [value]=gameSettingsObj.noMarkGuessChars
+        >
+        <span class="settings-label px25">Not Mark Guess Chars? (much harder)</span>
+        <br/>
+        <br/>
+        <input class="checkbox-input" type="checkbox"
+               id='startWithReveal'
+               formControlName="startWithReveal"
+               name="startWithReveal"
+               [value]=gameSettingsObj.startWithReveal
+        >
+        <span class="settings-label px25">Start with 1-letter Reveal? (easier)</span>
+        <br/>
+        <br/>
+        <span class="settings-label px25">Hint Use Policy</span>
+        @for (opt of hintUseOpts; track opt) {
+        <br/>
+        <input type="radio"
+               id=hintUsePolicy{{opt.val}}
+               formControlName='hintUsePolicy'
+               name='hintUsePolicy'
+               [value]=opt.val
+        >
+        <label class="px20" for="hintUsePolicy{{opt.val}}">{{opt.label}}</label>{{nbspchar}}{{nbspchar}}
+        }
+
+        <br/>
+        <br/>
+        <br/>
+        <div class="container-grid">
+            <button class="submit-button" type="submit" (click)="onSettingsFormSubmit()">Submit</button>
+        </div>
+    </form>
+</dialog>

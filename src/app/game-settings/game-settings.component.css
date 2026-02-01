@@ -1,0 +1,36 @@
+.px20{
+    font-size: 20px;
+}
+.px25, .px25 option, .px25 select .px25 button {
+    font-size: 25px;
+}
+.settings-label {
+    margin-right: 1em;
+}
+.checkbox-input {
+    font-size: 25px;
+    float: left;
+    margin-right: 1em;
+    width: 1em;
+    height: 1em;
+}
+.dialog-class {
+    padding-right: 1em;
+    padding-left: 1em;
+    width: 22em;
+}
+.radio-input {
+    float: left;
+    margin-right: 1em;
+}
+.submit-button {
+   font-size: 25px;
+ }
+.container-grid {
+    display: grid; /* Enables CSS Grid */
+    place-items: center; /* Centers both horizontally and vertically */
+    font-size: 25px;
+}
+.form-title {
+    text-align:center;
+}

@@ -58,7 +58,8 @@
 
 <div>
     @if (enableSettings) {
-    <app-game-settings/>
+    <p> enableSettings = {{enableSettings}} </p>
+    <app-game-settings [gameSettingsObj]="settings" (submitComplete)="settingsDialogComplete($event)"/>
     }
 </div>
 

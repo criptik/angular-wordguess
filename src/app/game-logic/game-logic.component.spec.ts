@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { provideHttpClient } from '@angular/common/http';
 import { GameLogicComponent } from './game-logic.component';
 
 describe('GameLogicComponent', () => {
@@ -7,8 +7,11 @@ describe('GameLogicComponent', () => {
   let fixture: ComponentFixture<GameLogicComponent>;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [GameLogicComponent]
+      await TestBed.configureTestingModule({
+          imports: [GameLogicComponent],
+          providers: [
+              provideHttpClient(),
+          ],
     })
     .compileComponents();
 

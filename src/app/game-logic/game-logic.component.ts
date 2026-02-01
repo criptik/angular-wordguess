@@ -44,7 +44,7 @@ export type SettingsObj = {
     hintUsePolicy: number,
 }
 
-const defaultSettings: SettingsObj = {
+export const defaultSettings: SettingsObj = {
     wordlen: 5,
     guessMustBeWord : true,
     noMarkGuessChars : false,            
@@ -135,15 +135,14 @@ export class GameLogicComponent  implements OnInit {
     poolLine: string = '';
     nbspchar: string = nbsp;
     enableSettings: boolean = false;
-    settingsComponent: GameSettingsComponent;
     defStrings: string[] = [];
     revealPos: number = 0;
+    revealChar: string = '';
     usedDefaultGameState: boolean = true;
     
     constructor(private _fileService: FileService) {
         this.setInitGameState();
         this.hintHandler = HintHandler.getHintHandler(this);
-        this.settingsComponent = new GameSettingsComponent(this);
         this.setInputs('');
     }
 
@@ -162,6 +161,8 @@ export class GameLogicComponent  implements OnInit {
         this.setPoolLine();
         this.message = emptyMessage;
         this.hintHandler = HintHandler.getHintHandler(this);
+        this.totalGuessCount = 0;
+        this.legalGuessCount = 0;
         if (true) {
             await this.buildWordList(this.settings.wordlen);
             this.possibleList = Array.from(this.wordList);
@@ -175,12 +176,14 @@ export class GameLogicComponent  implements OnInit {
         this.totalGuessCount = 0;
         if (!this.settings.startWithReveal) {
             this.revealPos = -1;
+            this.revealChar = '';
         } else {
             const inputAry: string[] = Array(this.settings.wordlen).fill(nbsp);
             this.revealPos = this.findRevealPos();
-            inputAry[this.revealPos] = this.answer[this.revealPos];
+            this.revealChar = this.answer[this.revealPos];
+            inputAry[this.revealPos] = this.revealChar;
             this.setInputs(inputAry.join(''));
-            console.log('input after reveal', this.input);
+            // console.log('input after reveal', this.input);
             const posMap = this.doCompare(this.input, this.answer);
             this.guessList.push({
                 guess: this.input,
@@ -191,12 +194,10 @@ export class GameLogicComponent  implements OnInit {
             this.possibleList = this.getNewPossibleList(this.input, posMap);
             this.setTopMsg();
             this.setInputs('');
-            this.totalGuessCount = 0;
-            this.legalGuessCount = 0;
         }
         this.gameOver = false;
         this.focusToInput();
-        console.log('end of startNewGame, component', this);
+        // console.log('end of startNewGame, component', this);
     }
 
     findRevealPos(): number {
@@ -226,24 +227,9 @@ export class GameLogicComponent  implements OnInit {
         const URL = `/assets/ospd${wordlen}.txt`;
         console.log('URL', URL);
         let text: string = '';
-        console.log('before call to getTextFile');
+        // console.log('before call to getTextFile');
         text = await firstValueFrom(this._fileService.getTextFileContent(URL));
-        // .subscribe({
-        // next: (data) => {
-        //     // Assign the response text to a component property
-        //     console.log('File content loaded successfully');
-        //     console.log(`dataLength = ${data.length}`);
-        //     text = data;
-        // },
-        // error: (error) => {
-        //     console.error('Error fetching text file:', error);
-        // },
-        // complete: () => {
-        //     console.log('Request completed');
-        //     console.log('before text.split');
-        // }
-        //         });
-        console.log('after call to getTextFile');
+        // console.log('after call to getTextFile');
         this.wordList = text.split('\n');
         this.wordList = this.wordList.map(word => word.toUpperCase());
         console.log(`wordlist for len ${wordlen} built with ${this.wordList.length} words`);
@@ -274,6 +260,7 @@ export class GameLogicComponent  implements OnInit {
                 }
             }
         });
+        // console.log(`doCompare ${guess} vs. ${base}, posMap is ${posMap}`); 
         return posMap;
     }
 
@@ -345,7 +332,7 @@ export class GameLogicComponent  implements OnInit {
         else if (this.settings.hintUsePolicy !== 0 && this.guessList.length > 0) {
             const message = this.hintHandler.checkUseAllHints(this.input);
             if (message) {
-                console.log('hintUseMessage', message);
+                // console.log('hintUseMessage', message);
                 this.setMessage(message, 'rgb(230,230,230)');
                 legalGuess = false;
             }
@@ -354,7 +341,7 @@ export class GameLogicComponent  implements OnInit {
             this.legalGuessCount++;
             // guess is legal, see how right it is
             const posMap = this.doCompare(this.input, this.answer);
-            console.log(`posMap: ${posMap}`);
+            // console.log(`posMap: ${posMap}`);
             this.guessList.push({
                 guess: this.input,
                 index : this.guessList.length,
@@ -395,7 +382,7 @@ export class GameLogicComponent  implements OnInit {
             JSONstring = JSON.stringify(this, filteredFieldNames);
         }
         window.localStorage[savedGameStorageName] = JSONstring;
-        console.log('JSONstring:', JSON.stringify(this, filteredFieldNames, 2));
+        // console.log('JSONstring:', JSON.stringify(this, filteredFieldNames, 2));
         // console.log(`message: ${this.message}`);
 
     }
@@ -530,14 +517,14 @@ export class GameLogicComponent  implements OnInit {
 
     restoreSavedState(jsonStr: string) {
         const savedSettings:SettingsObj = JSON.parse(jsonStr);
-        console.log('restore', savedSettings);
+        // console.log('restore', savedSettings);
         this.settings = savedSettings;
-        console.log('restored settings are: ', this.settings);
+        // console.log('restored settings are: ', this.settings);
     }
     
     
     setDefaultGameState() {
-        console.log('setting default game state');
+        // console.log('setting default game state');
         // default settings
         this.settings = defaultSettings;
         this.answer = '';
