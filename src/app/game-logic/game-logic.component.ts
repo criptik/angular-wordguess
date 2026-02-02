@@ -171,7 +171,7 @@ export class GameLogicComponent  implements OnInit {
             this.defStrings = await this.getDefinition();
         }
         else {
-            this.answer = 'FRIZZ';
+            this.answer = 'FLAME';
         }
         this.totalGuessCount = 0;
         if (!this.settings.startWithReveal) {

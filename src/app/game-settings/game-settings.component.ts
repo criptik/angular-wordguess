@@ -69,7 +69,7 @@ export class GameSettingsComponent implements AfterViewInit, OnInit {
         const choicesAry = this.gameSettingsObj.noMarkGuessChars ? choicesAryNonMark : choicesAryMark;
         
         this.hintUseOpts = choicesAry;
-        console.log('hintUseOpts', this.hintUseOpts);
+        // console.log('hintUseOpts', this.hintUseOpts);
     }
 
     onSettingsFormSubmit() {
