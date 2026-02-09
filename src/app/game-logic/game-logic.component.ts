@@ -163,15 +163,16 @@ export class GameLogicComponent  implements OnInit {
         this.hintHandler = HintHandler.getHintHandler(this);
         this.totalGuessCount = 0;
         this.legalGuessCount = 0;
+        await this.buildWordList(this.settings.wordlen);
+        this.possibleList = Array.from(this.wordList);
+        this.setTopMsg();
         if (true) {
-            await this.buildWordList(this.settings.wordlen);
-            this.possibleList = Array.from(this.wordList);
-            this.setTopMsg();
             this.answer = this.wordList[Math.floor(Math.random() * this.wordList.length)].toUpperCase();
             this.defStrings = await this.getDefinition();
         }
         else {
             this.answer = 'FLAME';
+            this.defStrings = [];
         }
         this.totalGuessCount = 0;
         if (!this.settings.startWithReveal) {
@@ -285,6 +286,9 @@ export class GameLogicComponent  implements OnInit {
         if (this.gameOver) return;
         if (key === '?') console.log(`this.answer = ${this.answer}, len=${this.answer.length}`);
         if (key === '!') console.log('logic component', this);
+        if (key === '%') console.log('best Guess', this.computeOptimalGuess());
+        if (key === '*') console.log('possibleList', this.possibleList);
+        if (key === '#') console.log('avgElimCount', this.getAvgElimCount(this.input, this.possibleList).toFixed(1));
         if (key === 'Backspace' && this.message != null) {
             this.message = emptyMessage;
         }
@@ -532,5 +536,31 @@ export class GameLogicComponent  implements OnInit {
         this.message = emptyMessage;
     }
 
+    getAvgElimCount(guessWord: string, oldPossibleList: string[]): number {
+        let elimSum = 0;
+        oldPossibleList.forEach( (ansWord) => {
+            const guessPosMap = this.doCompare(guessWord, ansWord);
+            const tmpPossibleList: string[] = this.getNewPossibleList(guessWord, guessPosMap);
+            elimSum += (oldPossibleList.length - tmpPossibleList.length);
+        });
+        return (elimSum / oldPossibleList.length);
+    }
+    
+    computeOptimalGuess(): string {
+        const oldPossibleList = [...this.possibleList];
+        let bestAvgElimCount = 0;
+        let bestGuess = '';
+        oldPossibleList.forEach( (guessWord, guessIdx) => {
+            const avgElimCount = this.getAvgElimCount(guessWord, oldPossibleList);
+            if (avgElimCount > bestAvgElimCount) {
+                bestAvgElimCount = avgElimCount;
+                bestGuess = guessWord;
+                console.log(`newBestGuess: ${bestGuess}, ${bestAvgElimCount.toFixed(1)}, ${guessIdx+1}/${oldPossibleList.length}`);
+            }
+        });
+        console.log(`bestGuess is ${bestGuess}, ${bestAvgElimCount.toFixed(1)}`);
+        return bestGuess;
+    }
+    
 }
 

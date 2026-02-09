@@ -104,8 +104,10 @@ class HintHandlerMarkChars extends HintHandler{
         const oldCode = oldPosMap[pos];
         const oldChr = oldGuess[pos];
         // console.log(`genErrMsg ${pos} ${newCode} ${oldCode} ${oldChr} ${newGuess[pos]},`, newPosMap, oldPosMap);
-        // we know policy at least includes EXACT
-        if (oldCode === EXACT) return `chr ${pos+1} must be ${oldChr}, `;
+        // we know policy at least includes EXACT but test for it here just for clarity
+        if (this.policyIncludes(EXACTBIT)) {
+            if (oldCode === EXACT) return `chr ${pos+1} must be ${oldChr}, `;
+        }
         if (this.policyIncludes(WRONGBIT)&& oldCode === WRONG){
             if (newCode === EXACT) return `chr ${pos+1} must not be ${oldChr}, `;
             if (newCode === NOTUSE) return `must use ${oldChr} somewhere, `;
