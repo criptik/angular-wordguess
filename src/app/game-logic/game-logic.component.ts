@@ -31,9 +31,8 @@ type UnknownKeyObj = {
   [key: string]: unknown;
 };
 
-export const [EXACT, WRONG, NOTUSE, UNKNOWN] = [1,2,3,4];
+export const [EXACT, WRONG, NOTUSE] = [1,2,3];
 export const [EXACTBIT, WRONGBIT, NOTUSEBIT] = [2,4,8];
-export const WILDCHAR = '?';
 const savedGameStorageName = 'wordguessSavedGame';
 
 export type SettingsObj = {
@@ -253,9 +252,6 @@ export class GameLogicComponent  implements OnInit {
                 bchars[index] = null;
                 gchars[index] = null;
                 posMap[index] = EXACT;
-            }
-            else if (bchars[index] === WILDCHAR || gchar === WILDCHAR) {
-                posMap[index] = UNKNOWN;
             }
         });
         // then do any more matches

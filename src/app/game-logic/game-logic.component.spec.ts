@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { GameLogicComponent, GuessObj, GuessLineObj, EXACT, WRONG, NOTUSE, UNKNOWN } from './game-logic.component';
+import { GameLogicComponent, GuessObj, GuessLineObj, EXACT, WRONG, NOTUSE } from './game-logic.component';
 import { EXACTBIT, WRONGBIT, NOTUSEBIT } from './game-logic.component';
 import { HintHandler } from './HintHandler';
 
@@ -196,7 +196,7 @@ describe('GameLogicComponent', () => {
         ];
         
         legalTests.slice(0).forEach( (test) => {
-            fit(`Clue Legality test for ${JSON.stringify(test)} to be correct`,  () => {
+            it(`Clue Legality test for ${JSON.stringify(test)} to be correct`,  () => {
                 c.answer = test.ans;
                 c.revealPos = test.rpos;
                 c.revealChar = (test.rpos === -1 ? '' : test.ans[test.rpos]);

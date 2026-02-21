@@ -1,4 +1,4 @@
-import {EXACT, WRONG, NOTUSE, UNKNOWN, EXACTBIT, WRONGBIT, NOTUSEBIT} from './game-logic.component';
+import {EXACT, WRONG, NOTUSE, EXACTBIT, WRONGBIT, NOTUSEBIT} from './game-logic.component';
 import { GameLogicComponent, GuessObj, GuessLineObj }  from './game-logic.component';
 
 const nbsp = String.fromCharCode(160);
@@ -49,10 +49,6 @@ abstract class HintHandler {
     policyIncludes(bits: number) {
         // console.log('policyIncludes', this.gameObj.settings.hintUsePolicy, bits);
         return ((this.gameObj.settings.hintUsePolicy & bits) !== 0)
-    }
-
-    hasUnknowns(val1: number, val2: number) {
-        return (val1 === UNKNOWN && val2 === UNKNOWN);
     }
 
     // abstract methods
@@ -131,7 +127,7 @@ class HintHandlerMarkChars extends HintHandler{
         for (let pos=0; pos<len; pos++) {
             const newCode = newPosMap[pos];
             const oldCode = oldPosMap[pos];
-            if (!this.hasUnknowns(newCode, oldCode) && newCode !== oldCode) {
+            if (newCode !== oldCode) {
                 // errMsg += `chr ${pos+1} ${newCode} !== ${oldCode}, `;
                 errMsg += this.genErrMsg(newPosMap, oldPosMap, pos, newGuess, guessObj.guess);
             }
@@ -141,7 +137,7 @@ class HintHandlerMarkChars extends HintHandler{
     }
 
     possibleListFilter(tstPosMap: number[], basePosMap: number[]): boolean {
-        return tstPosMap.every((val, index) => val === basePosMap[index] || this.hasUnknowns(val, basePosMap[index]));
+        return tstPosMap.every((val, index) => val === basePosMap[index]);
     }
 }
 
@@ -211,10 +207,8 @@ class HintHandlerShowTotals extends HintHandler{
         for (let idx=0; idx < oldPosMap.length; idx++) {
             const oldval = oldPosMap[idx];
             const newval = newPosMap[idx];
-            if (!this.hasUnknowns(oldval, newval)) {
-                oldcounts[oldval-1]++;
-                newcounts[newval-1]++;
-            }
+            oldcounts[oldval-1]++;
+            newcounts[newval-1]++;
         }
         return [oldcounts[0], oldcounts[1], newcounts[0], newcounts[1]];
     }
