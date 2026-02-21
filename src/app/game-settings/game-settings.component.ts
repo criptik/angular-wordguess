@@ -1,4 +1,4 @@
-import { Component, inject, Input, Output, ViewChild, OnInit, AfterViewInit, EventEmitter } from '@angular/core';
+import { Component, inject, Input, Output, ViewChild, OnInit, OnChanges, AfterViewInit, EventEmitter } from '@angular/core';
 import { Directive, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, FormControl, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { EXACTBIT, WRONGBIT, NOTUSEBIT, SettingsObj, defaultSettings } from '../game-logic/game-logic.component'
@@ -17,9 +17,10 @@ type HintUseObj = {
     templateUrl: './game-settings.component.html',
     styleUrl: './game-settings.component.css'
 })
-export class GameSettingsComponent implements AfterViewInit, OnInit {
+export class GameSettingsComponent implements OnChanges, OnInit, AfterViewInit {
     @ViewChild('gameSettingsDialog') gameSettingsDialog!: ElementRef<HTMLDialogElement>;
     @Input() gameSettingsObj: SettingsObj = defaultSettings
+    @Input() settingsCount: number = 0;
     @Output() submitComplete = new EventEmitter<string>();
 
     nbspchar: string = nbsp;
@@ -45,13 +46,44 @@ export class GameSettingsComponent implements AfterViewInit, OnInit {
             noMarkGuessChars: [this.gameSettingsObj.noMarkGuessChars] ,
             startWithReveal: [this.gameSettingsObj.startWithReveal] ,
             hintUsePolicy: [this.gameSettingsObj.hintUsePolicy], 
+            showElimPct: [this.gameSettingsObj.showElimPct], 
+        });
+
+        this.onNoMarkGuessCharsChange()
+    }
+
+    onNoMarkGuessCharsChange(): void {
+        this.gameSettingsForm.get('noMarkGuessChars')?.valueChanges.subscribe((noMark:boolean) => {
+            // 1. Fetch data for the hintUsePolicy choices based on the selected noMark value
+            this.gameSettingsObj.noMarkGuessChars = noMark;
+            this.genHintUsePolicySetting();
+            
+            // 2. Reset the child dropdown's value when the parent changes
+            const oldHintUseVal: number = this.gameSettingsForm!.value.hintUsePolicy;
+            let newHintUseVal: number = oldHintUseVal;
+            if (noMark && newHintUseVal === EXACTBIT + WRONGBIT) {
+                newHintUseVal += NOTUSEBIT;
+            }
+            this.gameSettingsForm.get('hintUsePolicy')?.setValue(newHintUseVal);
         });
     }
     
-    ngAfterViewInit() {
-        console.log('in AfterViewInit');
-        // console.log(this.gameSettingsDialog.nativeElement); // Logs the native HTML input element
+    showModal() {
+        this.ngOnInit();
         this.gameSettingsDialog.nativeElement.showModal();
+    }
+    
+    ngAfterViewInit() {
+        // console.log('in AfterViewInit', this);
+        // console.log('dialog', this.gameSettingsDialog); // Logs the native HTML input element
+        // console.log('nativeElement', this.gameSettingsDialog.nativeElement); // Logs the native HTML input element
+        // this.showModal();
+    }
+    
+    ngOnChanges() {
+        console.log('in OnChanges', this.settingsCount);
+        // console.log('dialog', this.gameSettingsDialog); // Logs the native HTML input element
+        // console.log(this.gameSettingsDialog.nativeElement); // Logs the native HTML input element
     }
 
     genHintUsePolicySetting() {
@@ -66,9 +98,7 @@ export class GameSettingsComponent implements AfterViewInit, OnInit {
                     {label:'Green Totals Must Match (slightly harder)', val:EXACTBIT},
                     {label:'All Totals Must Match (restrictive but can be helpful)', val:EXACTBIT+WRONGBIT+NOTUSEBIT}
         ];            
-        const choicesAry = this.gameSettingsObj.noMarkGuessChars ? choicesAryNonMark : choicesAryMark;
-        
-        this.hintUseOpts = choicesAry;
+        this.hintUseOpts = this.gameSettingsObj.noMarkGuessChars ? choicesAryNonMark : choicesAryMark;
         // console.log('hintUseOpts', this.hintUseOpts);
     }
 

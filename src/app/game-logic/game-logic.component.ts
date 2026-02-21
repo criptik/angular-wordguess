@@ -42,6 +42,7 @@ export type SettingsObj = {
     noMarkGuessChars: boolean,            
     startWithReveal: boolean,
     hintUsePolicy: number,
+    showElimPct: boolean,
 }
 
 export const defaultSettings: SettingsObj = {
@@ -50,6 +51,7 @@ export const defaultSettings: SettingsObj = {
     noMarkGuessChars : false,            
     hintUsePolicy : EXACTBIT,
     startWithReveal: false,
+    showElimPct: false,
 };
 
 export type GuessObj = {
@@ -112,6 +114,8 @@ const savedGameFields = [
 export class GameLogicComponent  implements OnInit {
 
     @ViewChild('guessInput') guessInputRef!: ElementRef<HTMLInputElement>;
+    @ViewChild(GameSettingsComponent) childSettingsComp!: GameSettingsComponent;
+
     inputChars: string[] = [];
     input: string = '';
     answer: string = '';
@@ -135,6 +139,7 @@ export class GameLogicComponent  implements OnInit {
     poolLine: string = '';
     nbspchar: string = nbsp;
     enableSettings: boolean = false;
+    enableSettingsCount: number = 0;
     defStrings: string[] = [];
     revealPos: number = 0;
     revealChar: string = '';
@@ -234,6 +239,8 @@ export class GameLogicComponent  implements OnInit {
         this.wordList = text.split('\n');
         this.wordList = this.wordList.map(word => word.toUpperCase());
         console.log(`wordlist for len ${wordlen} built with ${this.wordList.length} words`);
+        // console.log('ALIEN-FLUID', this.doCompare('ALIEN', 'FLUID'));
+        // console.log('FLUID-ALIEN', this.doCompare('FLUID', 'ALIEN'));
     }
 
     doCompare(guess: string, base: string): number[] {
@@ -272,7 +279,7 @@ export class GameLogicComponent  implements OnInit {
         if (this.gameOver) {
             this.inputChars = [];
         } else { 
-            // build up array first, the assign
+            // build up array first, then assign
             const tmpary: string[] = [];
             _.range(this.settings.wordlen).forEach( (n) => {
                 tmpary.push((n < this.input.length ? this.input[n] : nbsp));
@@ -288,7 +295,8 @@ export class GameLogicComponent  implements OnInit {
         if (key === '!') console.log('logic component', this);
         if (key === '%') console.log('best Guess', this.computeOptimalGuess());
         if (key === '*') console.log('possibleList', this.possibleList);
-        if (key === '#') console.log('avgElimCount', this.getAvgElimCount(this.input, this.possibleList).toFixed(1));
+        if (key === '#') console.log(`avgElimPct for ${this.input}: `, this.getAvgElimPct(this.input, this.possibleList).toFixed(1));
+        if (key === '=') console.log(`gameLogic component`, this);
         if (key === 'Backspace' && this.message != null) {
             this.message = emptyMessage;
         }
@@ -307,6 +315,9 @@ export class GameLogicComponent  implements OnInit {
             if ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.includes(key)) {
                 if (this.input.length < this.settings.wordlen) {
                     this.setInputs(this.input + key);
+                    if (this.settings.showElimPct && this.totalGuessCount > 0 && this.input.length === this.answer.length) {
+                        this.setMessage(`Avg Elimination Pct for ${this.input}: ${this.getAvgElimPct(this.input, this.possibleList).toFixed(1)}`);
+                    }
                 }
                 else {
                     this.setMessage(`too long, ignoring ${key}`);
@@ -477,7 +488,8 @@ export class GameLogicComponent  implements OnInit {
 
     onSettingsButtonClick(event: any) {
         this.wordlenBeforeSettingsDialog = this.settings.wordlen;
-        this.enableSettings = true;
+        this.enableSettingsCount++;
+        this.childSettingsComp.showModal();
         this.focusToInput();
     }
 
@@ -493,6 +505,7 @@ export class GameLogicComponent  implements OnInit {
         this.settings.noMarkGuessChars = formValue.noMarkGuessChars;
         this.settings.startWithReveal = formValue.startWithReveal;
         this.settings.hintUsePolicy = formValue.hintUsePolicy;
+        this.settings.showElimPct = formValue.showElimPct;
         // see if we have to start a new game
         if (this.settings.wordlen !== this.wordlenBeforeSettingsDialog) {
             await this.startNewGame();
@@ -536,29 +549,33 @@ export class GameLogicComponent  implements OnInit {
         this.message = emptyMessage;
     }
 
-    getAvgElimCount(guessWord: string, oldPossibleList: string[]): number {
+    getAvgElimPct(guessWord: string, oldPossibleList: string[]): number {
         let elimSum = 0;
         oldPossibleList.forEach( (ansWord) => {
             const guessPosMap = this.doCompare(guessWord, ansWord);
-            const tmpPossibleList: string[] = this.getNewPossibleList(guessWord, guessPosMap);
+            let tmpPossibleList: string[] = [];
+            if (ansWord !== guessWord) {
+                tmpPossibleList = this.getNewPossibleList(guessWord, guessPosMap);
+            }
             elimSum += (oldPossibleList.length - tmpPossibleList.length);
+            // console.log(`after ${ansWord}, elimSum=${elimSum}, tmpList.len=${tmpPossibleList.length}`);
         });
-        return (elimSum / oldPossibleList.length);
+        return (100 * elimSum / (oldPossibleList.length * oldPossibleList.length));
     }
     
     computeOptimalGuess(): string {
         const oldPossibleList = [...this.possibleList];
-        let bestAvgElimCount = 0;
+        let bestAvgElimPct = 0;
         let bestGuess = '';
         oldPossibleList.forEach( (guessWord, guessIdx) => {
-            const avgElimCount = this.getAvgElimCount(guessWord, oldPossibleList);
-            if (avgElimCount > bestAvgElimCount) {
-                bestAvgElimCount = avgElimCount;
+            const avgElimPct = this.getAvgElimPct(guessWord, oldPossibleList);
+            if (avgElimPct > bestAvgElimPct) {
+                bestAvgElimPct = avgElimPct;
                 bestGuess = guessWord;
-                console.log(`newBestGuess: ${bestGuess}, ${bestAvgElimCount.toFixed(1)}, ${guessIdx+1}/${oldPossibleList.length}`);
+                console.log(`newBestGuess: ${bestGuess}, ${bestAvgElimPct.toFixed(1)}, #${guessIdx+1} out of ${oldPossibleList.length}`);
             }
         });
-        console.log(`bestGuess is ${bestGuess}, ${bestAvgElimCount.toFixed(1)}`);
+        console.log(`bestGuess is ${bestGuess}, ${bestAvgElimPct.toFixed(1)}`);
         return bestGuess;
     }
     

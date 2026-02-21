@@ -57,10 +57,7 @@
 </div>
 
 <div>
-    @if (enableSettings) {
-    <p> enableSettings = {{enableSettings}} </p>
-    <app-game-settings [gameSettingsObj]="settings" (submitComplete)="settingsDialogComplete($event)"/>
-    }
+    <app-game-settings [gameSettingsObj]="settings" [settingsCount]="enableSettingsCount"  (submitComplete)="settingsDialogComplete($event)"/>
 </div>
 
 <input #guessInput id="guessInput" (keydown)="onGuessEntryInputKeyDown($event)"
